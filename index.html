@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>GRAVITY FLIP - FINAL BOSS</title>
+<style>
+body{margin:0;overflow:hidden;background:black;font-family:Arial;}
+canvas{display:block;margin:auto;background:#000;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+canvas.width=1000;
+canvas.height=500;
+
+let state="menu";
+let gravityDir=1;
+let speed=10;
+let score=0;
+let shake=0;
+let bossActive=false;
+let bossHP=300;
+
+let player={x:200,y:250,w:25,h:25,vel:0,gravity:1.3};
+let obstacles=[];
+let bossProjectiles=[];
+
+function neon(x,y,w,h,color){
+ctx.shadowBlur=20;
+ctx.shadowColor=color;
+ctx.fillStyle=color;
+ctx.fillRect(x,y,w,h);
+ctx.shadowBlur=0;
+}
+
+document.addEventListener("keydown",e=>{
+if(e.code==="Space"&&state==="playing"){gravityDir*=-1;shake=20;}
+if(e.code==="Enter"&&(state==="gameover"||state==="victory"))reset();
+});
+
+canvas.addEventListener("click",()=>{
+if(state==="menu")state="playing";
+});
+
+function reset(){
+score=0;speed=10;bossActive=false;bossHP=300;
+player.y=250;player.vel=0;gravityDir=1;
+obstacles=[];bossProjectiles=[];
+state="playing";
+}
+
+function spawnObstacle(){
+let h=Math.random()*150+50;
+let fromTop=Math.random()>0.5;
+obstacles.push({
+x:canvas.width,
+y:fromTop?0:canvas.height-h,
+w:30,h:h
+});
+}
+
+setInterval(()=>{
+if(state==="playing"&&!bossActive){
+spawnObstacle();
+if(Math.random()<0.5)spawnObstacle();
+}
+},700);
+
+function activateBoss(){
+bossActive=true;
+shake=40;
+}
+
+function updateBoss(){
+if(!bossActive)return;
+
+if(score%20===0){
+bossProjectiles.push({
+x:canvas.width-150,
+y:Math.random()*canvas.height,
+w:15,h:15
+});
+}
+
+bossProjectiles.forEach(p=>{
+p.x-=12;
+if(player.x<p.x+p.w&&player.x+player.w>p.x&&player.y<p.y+p.h&&player.y+player.h>p.y){
+state="gameover";
+}
+});
+
+bossProjectiles=bossProjectiles.filter(p=>p.x>0);
+
+bossHP-=0.3;
+if(bossHP<=0){
+state="victory";
+}
+}
+
+function update(){
+if(state!=="playing")return;
+
+player.vel+=player.gravity*gravityDir;
+player.y+=player.vel;
+
+if(player.y<0){player.y=0;player.vel=0;}
+if(player.y+player.h>canvas.height){player.y=canvas.height-player.h;player.vel=0;}
+
+if(score>2000&&!bossActive)activateBoss();
+
+if(!bossActive){
+obstacles.forEach(o=>{
+o.x-=speed;
+if(player.x<o.x+o.w&&player.x+player.w>o.x&&player.y<o.y+o.h&&player.y+player.h>o.y){
+state="gameover";
+}
+});
+obstacles=obstacles.filter(o=>o.x>0);
+speed+=0.01;
+}else{
+updateBoss();
+}
+
+score++;
+if(Math.random()<0.02)shake=25;
+if(shake>0)shake--;
+}
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+if(state==="menu"){
+ctx.fillStyle="#ff0040";
+ctx.font="22px Arial";
+ctx.fillText("⚠ WARNING: This game contains a VIBRATING SCREEN effect.",250,140);
+ctx.fillText("Not recommended for people sensitive to flashing or shaking visuals.",180,170);
+
+ctx.fillStyle="#0ff";
+ctx.font="80px Arial";
+ctx.fillText("GRAVITY FLIP",200,260);
+
+ctx.fillStyle="#ff00ff";
+ctx.font="30px Arial";
+ctx.fillText("Click To Start",380,320);
+return;
+}
+
+let dx=0,dy=0;
+if(shake>0){
+dx=(Math.random()-0.5)*30;
+dy=(Math.random()-0.5)*30;
+}
+ctx.save();
+ctx.translate(dx,dy);
+
+neon(player.x,player.y,player.w,player.h,"#00ffff");
+
+if(!bossActive){
+obstacles.forEach(o=>neon(o.x,o.y,o.w,o.h,"#ff0040"));
+}else{
+neon(canvas.width-150,150,100,200,"#ff00ff");
+bossProjectiles.forEach(p=>neon(p.x,p.y,p.w,p.h,"#ff0000"));
+ctx.fillStyle="#fff";
+ctx.fillText("BOSS HP: "+Math.floor(bossHP),750,50);
+}
+
+ctx.fillStyle="#fff";
+ctx.fillText("Score: "+score,20,30);
+
+ctx.restore();
+
+if(state==="gameover"){
+ctx.fillStyle="#ff0040";
+ctx.font="60px Arial";
+ctx.fillText("SYSTEM TERMINATED",250,220);
+ctx.font="25px Arial";
+ctx.fillStyle="#0ff";
+ctx.fillText("Press ENTER to Retry",380,270);
+}
+
+if(state==="victory"){
+ctx.fillStyle="#00ff88";
+ctx.font="60px Arial";
+ctx.fillText("SYSTEM OVERRIDDEN",250,220);
+ctx.font="25px Arial";
+ctx.fillStyle="#0ff";
+ctx.fillText("Press ENTER to Play Again",350,270);
+}
+}
+
+function loop(){
+update();
+draw();
+requestAnimationFrame(loop);
+}
+
+loop();
+
+</script>
+</body>
+</html>
